@@ -1,0 +1,51 @@
+name: Update Jira Issue
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [ main, master ]
+
+jobs:
+  update-jira:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Đăng nhập vào Jira
+      uses: atlassian/gajira-login@master
+      env:
+        JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+        JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+        JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+
+    - name: Tìm issue từ tiêu đề PR
+      id: extract_issues
+      run: |
+        ISSUE_KEYS=$(echo "${{ github.event.pull_request.title }}" | grep -o -E '[A-Z]+-[0-9]+')
+        echo "::set-output name=issues::$ISSUE_KEYS"
+
+    - name: Cập nhật trạng thái Jira
+      uses: atlassian/gajira-transition@master
+      if: steps.extract_issues.outputs.issues
+      with:
+        issue: ${{ steps.extract_issues.outputs.issues }}
+        transition: "Done"
+    - name: Gửi thông báo Slack
+      uses: 8398a7/action-slack@v3
+      if: steps.extract_issues.outputs.issues
+      with:
+        status: custom
+        fields: workflow,job,commit,repo,ref,author,took
+        custom_payload: |
+          {
+            "attachments": [
+              {
+                "color": "good",
+                "text": "Issue ${{ steps.extract_issues.outputs.issues }} đã được đóng thành công qua PR #${{ github.event.pull_request.number }}",
+                "footer": "GitHub Actions",
+                "footer_icon": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
+              }
+            ]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

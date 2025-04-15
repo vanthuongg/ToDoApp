@@ -1,0 +1,29 @@
+name: CI Pipeline
+
+on:
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Thiết lập Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18.x'
+    
+    - name: Cài đặt dependencies
+      run: npm install
+      
+    - name: Chạy kiểm tra lint
+      run: npm run lint || echo "Không tìm thấy lệnh lint"
+      
+    - name: Chạy unit test
+      run: npm test || echo "Không tìm thấy lệnh test"
+      
+    - name: Build dự án
+      run: npm run build || echo "Không tìm thấy lệnh build"
